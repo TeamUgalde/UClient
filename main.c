@@ -7,6 +7,9 @@
 #include "signal.h"
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include "array.h"
+#include <math.h>
 
 #define BUFFER_SIZE 8096
 
@@ -20,7 +23,12 @@ char requestString[200] = "GET ";
 
 struct sockaddr_in serverAddr;
 
+pthread_mutex_t mutex;
+Array arr;
+double average_time, variance;
+
 void* doRequest() {
+
     int socketfd;
 
     for(int i = 0; i < k; i++) {
@@ -33,7 +41,16 @@ void* doRequest() {
             printf("Fallo al conectarse al servidor.\n\n");
         }
 
+        clock_t begin, end;
+        double time_spent;
+        begin = clock();
         write(socketfd, requestString, strlen(requestString));
+        end = clock();
+        time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        printf("Tiempo: %lf segundos\n", time_spent);
+        pthread_mutex_lock(&mutex);
+        insertArray(&arr, time_spent);
+        pthread_mutex_unlock(&mutex);
 
         char buffer[BUFFER_SIZE];
         int readBytes = 0;
@@ -47,6 +64,24 @@ void* doRequest() {
     return NULL;
 }
 
+double average() {
+    double result = 0;
+    for(int i = 0; i < n*k; i++) {
+        result += arr.array[i];
+    }
+    result /= (n*k);
+    return result;
+}
+
+double calculateVariance() {
+    double result;
+    for(int i = 0; i < n*k; i++) {
+        result += pow(average_time - arr.array[i], 2);
+    }
+    result /= (n*k);
+    return result;
+}
+
 int main(int argc, char ** argv) {
     if(argc != 6) printf("Número inválido de argumentos.\n\n");
     else {
@@ -56,6 +91,8 @@ int main(int argc, char ** argv) {
         strcpy(requestedFile, argv[3]);
         n = atoi(argv[4]);
         k = atoi(argv[5]);
+        initArray(&arr, 1);
+        pthread_mutex_init(&mutex, NULL);
 
         //Assign server information.
         serverAddr.sin_family = AF_INET;
@@ -75,7 +112,9 @@ int main(int argc, char ** argv) {
         for(int i = 0; i < n; i++) {
             pthread_join(threads[i], NULL);
         }
-
+        average_time = average();
+        variance = calculateVariance();
+        printf("Tiempo promedio: %lf segundos\nVarianza: %lf segundos\n", average_time, variance);
     }
     return 0;
 }
