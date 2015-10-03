@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <time.h>
-#include "array.h"
 #include <math.h>
 
 #define BUFFER_SIZE 8096
@@ -23,8 +22,9 @@ char requestString[200] = "GET ";
 
 struct sockaddr_in serverAddr;
 
-pthread_mutex_t mutex;
-Array arr;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+double * arr;
+int globalIndex = 0;
 double average_time, variance;
 
 void* doRequest() {
@@ -49,7 +49,7 @@ void* doRequest() {
         time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
         printf("Tiempo: %lf segundos\n", time_spent);
         pthread_mutex_lock(&mutex);
-        insertArray(&arr, time_spent);
+        arr[globalIndex++] = time_spent;
         pthread_mutex_unlock(&mutex);
 
         char buffer[BUFFER_SIZE];
@@ -67,7 +67,7 @@ void* doRequest() {
 double average() {
     double result = 0;
     for(int i = 0; i < n*k; i++) {
-        result += arr.array[i];
+        result += arr[i];
     }
     result /= (n*k);
     return result;
@@ -76,7 +76,7 @@ double average() {
 double calculateVariance() {
     double result;
     for(int i = 0; i < n*k; i++) {
-        result += pow(average_time - arr.array[i], 2);
+        result += pow(average_time - arr[i], 2);
     }
     result /= (n*k);
     return result;
@@ -91,8 +91,8 @@ int main(int argc, char ** argv) {
         strcpy(requestedFile, argv[3]);
         n = atoi(argv[4]);
         k = atoi(argv[5]);
-        initArray(&arr, 1);
-        pthread_mutex_init(&mutex, NULL);
+        arr = (double *) malloc(n*k*sizeof(double));
+
 
         //Assign server information.
         serverAddr.sin_family = AF_INET;
@@ -112,8 +112,14 @@ int main(int argc, char ** argv) {
         for(int i = 0; i < n; i++) {
             pthread_join(threads[i], NULL);
         }
+
         average_time = average();
         variance = calculateVariance();
+        printf("-----------Imprimiendo todo el arreglo de tiempos----------------------\n");
+        for(int i = 0; i < n*k; i++) {
+            printf("%lf  ", arr[i]);
+        }
+        printf("\n--------------------------------------\n\n");
         printf("Tiempo promedio: %lf segundos\nVarianza: %lf segundos\n", average_time, variance);
     }
     return 0;
