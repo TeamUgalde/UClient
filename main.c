@@ -48,13 +48,6 @@ void* doRequest() {
         double time_spent;
         begin = clock();
         write(socketfd, requestString, strlen(requestString));
-        end = clock();
-        time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-
-        // Registers the time spent in the array.
-        pthread_mutex_lock(&mutex);
-        arr[globalIndex++] = time_spent;
-        pthread_mutex_unlock(&mutex);
 
         // Writes what was read to the 1st standard output (console).
         char buffer[BUFFER_SIZE];
@@ -63,6 +56,14 @@ void* doRequest() {
         while((readBytes = read(socketfd, buffer, BUFFER_SIZE) ) > 0) {
             if(printResource) write(1,buffer,readBytes);
         }
+
+        end = clock();
+        time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+        // Registers the time spent in the array.
+        pthread_mutex_lock(&mutex);
+        arr[globalIndex++] = time_spent;
+        pthread_mutex_unlock(&mutex);
 
         close(socketfd);
     }
@@ -97,8 +98,8 @@ int main(int argc, char ** argv) {
         strcpy(ip, argv[1]);
         port = atoi(argv[2]);
         strcpy(requestedFile, argv[3]);
-        n = atoi(argv[4]);
-        k = atoi(argv[5]);
+        k = atoi(argv[4]);
+        n = atoi(argv[5]);
         nk = n * k;
         arr = (double *) malloc(nk*sizeof(double));
 
