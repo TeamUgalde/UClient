@@ -10,10 +10,11 @@
 #include <time.h>
 #include <math.h>
 
-#define BUFFER_SIZE 8096
+#define BUFFER_SIZE 16192
 
 //Global variables.
 
+int printResource = 0;
 char ip[20];
 int port;
 char requestedFile[100];
@@ -54,15 +55,15 @@ void* doRequest() {
         pthread_mutex_lock(&mutex);
         arr[globalIndex++] = time_spent;
         pthread_mutex_unlock(&mutex);
-        /*
+
         // Writes what was read to the 1st standard output (console).
         char buffer[BUFFER_SIZE];
         int readBytes = 0;
 
         while((readBytes = read(socketfd, buffer, BUFFER_SIZE) ) > 0) {
-            write(1,buffer,readBytes);
+            if(printResource) write(1,buffer,readBytes);
         }
-        */
+
         close(socketfd);
     }
     return NULL;
@@ -89,7 +90,7 @@ double calculateVariance() {
 }
 
 int main(int argc, char ** argv) {
-    if(argc != 6) printf("Número inválido de argumentos.\n\n");
+    if(argc != 6 && argc != 7) printf("Número inválido de argumentos.\n\n");
     else {
 
         //Assign arguments.
@@ -100,6 +101,8 @@ int main(int argc, char ** argv) {
         k = atoi(argv[5]);
         nk = n * k;
         arr = (double *) malloc(nk*sizeof(double));
+
+        if(argc == 7) printResource = 1;
 
         //Assign server information.
         serverAddr.sin_family = AF_INET;
